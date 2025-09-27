@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 4.0)
-project(LinearAlgebraLib C)
+project(TensorLib C)
 
 set(CMAKE_C_STANDARD 11)
 
 include_directories(include)
-add_executable(LinearAlgebraLib src/main.c
+add_executable(TensorLib src/main.c
         include/tensor.h
         src/tensor.c
         src/tensor_operations.c

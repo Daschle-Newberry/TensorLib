@@ -9,32 +9,46 @@
 int main(void) {
     Tensor a;
     Tensor b;
-    Tensor res;
+    int size = 100;
+    int data_length = size*size;
+    float data_a[data_length];
+    int shape_a[2] = {size,size};
+    int ndim_a = 2;
 
-    float data_a[3] = {10,20,30};
-    int shape_a[1] = {1};
-    int ndim_a = 1;
+    float data_b[data_length];
+    int shape_b[2] = {size,size};
+    int ndim_b = 2;
 
-    float data_b[8] = {100,101,102,103,200,201,202,203};
-    int shape_b[3] = {2,1,4};
-    int ndim_b = 3;
+    for (int i = 0; i < data_length; i++) {
+        data_a[i] = (float)i;
+        data_b[i] = (float)i;
+    }
+
 
     TensorError err = tensor_init(&a, data_a, shape_a, ndim_a);
-    printf("A init error: %s\n", error_to_string(err));
-    // printf("A %s", tensor_metadata_to_string(&a));
+    printf("A init error: %s\n", tensor_error_to_string(err));
+    printf("A\n %s", tensor_metadata_to_string(&a));
 
     err = tensor_init(&b, data_b, shape_b, ndim_b);
-    printf("B init error: %s\n", error_to_string(err));
-    // printf("B %s", tensor_metadata_to_string(&b));
-
-    TensorOperationError op_err = mul_tensor(&res, &a, &b);
-
-    printf("operation error: %d\n", op_err);
-
-    printf("%s\n",tensor_to_string(&res));
+    printf("B init error: %s\n", tensor_error_to_string(err));
+    printf("B\n %s", tensor_metadata_to_string(&b));
 
 
+    float count = 5000;
+
+    float i = 0;
 
 
+    clock_t start = clock();
+    while (i < count) {
+        Tensor res;
+        mul_tensor(&res, &a, &b);
+        i++;
+    }
+
+    clock_t end = clock();
+
+    double total_time = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("%f operations per second", count/total_time);
     return 0;
 }
