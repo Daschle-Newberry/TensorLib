@@ -29,7 +29,7 @@ static int tensor_alloc_data(Tensor* out, const int flat_length) {
     return out->data ? 0 : -1;
 }
 
-static int tensor_alloc_metadata(Tensor* out, const int* shape, const int ndim) {
+static int tensor_alloc_metadata(Tensor* out, const int ndim) {
     char* metadata = malloc(
        (ndim * sizeof *out->shape) + (ndim * sizeof *out->strides)
     );
@@ -43,24 +43,33 @@ static int tensor_alloc_metadata(Tensor* out, const int* shape, const int ndim) 
     return out->data ? 0 : -1;
 }
 
-static void tensor_calculate_strides(const Tensor* out) {
-    out->strides[out->ndim - 1] = 1;
-    for (int i = out->ndim - 2; i >= 0; i--) {
-        out->strides[i] = out->shape[i+1] * out->strides[i + 1];
-    }
-}
-
 static int tensor_alloc(Tensor* out, const int* shape, const int ndim) {
     const int flat_length = tensor_flat_length(shape, ndim);
 
     if (tensor_alloc_data(out,flat_length) < 0) return -1;
 
-    if (tensor_alloc_metadata(out,shape,ndim) < 0) return -1;
+    if (tensor_alloc_metadata(out,ndim) < 0) return -1;
 
     out->ndim = ndim;
     out->length = flat_length;
 
     return 0;
+}
+
+static int tensor_alloc_view(Tensor* out, const Tensor* in, const int ndim) {
+    if (tensor_alloc_metadata(out,ndim) < 0) return -1;
+
+    out->ndim = ndim;
+    out->length = in->length;
+
+    return 0;
+}
+
+static void tensor_calculate_strides(const Tensor* out) {
+    out->strides[out->ndim - 1] = 1;
+    for (int i = out->ndim - 2; i >= 0; i--) {
+        out->strides[i] = out->shape[i+1] * out->strides[i + 1];
+    }
 }
 
 static void build_string(StringBuilder* sb, const Tensor* tensor, const int offset, const int dim) {
@@ -157,21 +166,34 @@ void tensor_view_free(Tensor* tensor) {
 }
 
 
-TensorError tensor_expand(Tensor* out, const Tensor* in, const int* new_shape, const int new_ndims) {
+TensorError tensor_expand(Tensor* out, const Tensor* in, const int* new_shape, const int new_ndim) {
+    if (tensor_alloc_view(out, in, new_ndim) < 0) return TENSOR_ERROR_NO_MEMORY;
+
+    for (int i = 0; i < in->ndim; i++) {
+        if (new_shape[new_ndim - i] != in->shape[i]) return TENSOR_ERROR_CANNOT_EXPAND;
+        out->shape[new_ndim - i] = new_shape[new_ndim - i];
+    }
+
+    for (int i = new_ndim - in->ndim; i < new_ndim; i++) {
+        out->shape[i] = new_shape[i];
+    }
+
+    out->data = in->data;
 
 }
 
 TensorError tensor_promote_to_col(Tensor* out, const Tensor* in) {
-    const int m = tensor->shape[tensor->ndim - 2];
-    const int n = tensor->shape[tensor->ndim -1];
+    if (in->ndim > 1) return TENSOR_ERROR_INVALID_ARGUMENT;
 
-    const int ms = tensor->strides[tensor->ndim - 2];
-    const int ns = tensor->strides[tensor->ndim - 1];
+    if (tensor_alloc_view(out, in, 2) < 0) return TENSOR_ERROR_NO_MEMORY;
 
-    tensor->shape[tensor->ndim - 2] = n;
-    tensor->shape[tensor->ndim - 1] = m;
-    tensor->strides[tensor->ndim - 2] = ns;
-    tensor->strides[tensor->ndim - 1] = ms;
+    out->shape[0] = in->shape[0];
+    out->shape[1] = 1;
+
+    out->strides[0] = 1;
+    out->strides[1] = 0;
+
+    out->data = in->data;
 
     return TENSOR_ERROR_NONE;
 }
@@ -215,6 +237,10 @@ const char* tensor_metadata_to_string(const Tensor* tensor) {
             sb_append(&sb, ", ");
         }
     }
+    sb_append(&sb, "]\n");
+    sb_append(&sb, "--------------------------------\n");
+
+    return sb.buff;
 }
 
 const char* tensor_error_to_string(const TensorError error){return TensorErrorStrings[error];}
