@@ -31,7 +31,7 @@ typedef struct {
 /**
  * Allocate an empty tensor (uninitialized data)
  * @param out Tensor pointer to allocate the new tensor at
- * @param shape Array of length ndim specifying the size of each dimension
+ * @param shape Array of length ndim specifying the size of each dimension.
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
@@ -88,6 +88,14 @@ void tensor_free(Tensor* tensor);
  * @param tensor Tensor to be freed
  */
 void tensor_view_free(Tensor* tensor);
+
+/**
+ *
+ * @param tensor Tensor to read from
+ * @param idx Integer array representing multidimensional indices
+ * @return the value at those indices
+ */
+float tensor_get(const Tensor* tensor, const int* idx);
 
 /**
  * Takes the given tensor and expands the dimensions to fit the new shape
