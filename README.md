@@ -74,7 +74,7 @@ void main(){
 - Elementwise broadcasting
 - Matrix broadcasting
 - Elementwise addition, subtraction, multiplication, and division.
-- ~~Matrix multiplication~~
+- Matrix multiplication
 - ~~Matrix transpose~~
 - ~~Scalar multiplication~~
 
@@ -82,4 +82,5 @@ void main(){
 - ~~SIMD~~
 - ~~GPU acceleration~~
 - ~~BLAS~~
+
 
