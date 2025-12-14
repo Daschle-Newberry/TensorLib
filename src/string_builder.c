@@ -1,6 +1,6 @@
-#include <stddef.h>
 #include "string_builder.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,6 +13,7 @@ void init_sb(StringBuilder* sb) {
 
 void sb_append(StringBuilder* sb, const char* string) {
     const size_t string_len = strlen(string);
+
     if (sb->len + string_len < sb->cap) {
         memcpy(&sb->buff[sb->len], string, string_len);
         sb->len += string_len;
@@ -25,7 +26,7 @@ void sb_append(StringBuilder* sb, const char* string) {
         char* new_buff = realloc(sb->buff, new_cap);
 
         sb->buff = new_buff;
-        sb->cap *= new_cap;
+        sb->cap = new_cap;
 
         memcpy(&sb->buff[sb->len], string, string_len);
         sb->len += string_len;

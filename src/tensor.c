@@ -37,12 +37,12 @@ static int tensor_alloc_metadata(Tensor* out, const int ndim) {
     );
 
     if (metadata == NULL) {
-        return TENSOR_ERROR_NO_MEMORY;
+        return -1;
     }
 
     out->shape = (int*) metadata;
     out->strides = (int*) &metadata[ndim * sizeof *out->shape];
-    return out->data ? 0 : -1;
+    return 0;
 }
 
 static int tensor_alloc(Tensor* out, const int* shape, const int ndim) {
@@ -74,19 +74,6 @@ static void tensor_calculate_strides(const Tensor* out) {
     }
 }
 
-//[2,2,2]
-/**
- *[
- *  [
- *      [1,2],
- *      [3,4]
- *  ],
- *  [
- *      [5,6],
- *      [7,8]
- *  ]
- *]
- */
 static void build_string_2(StringBuilder* sb, const Tensor* tensor, const int offset, const int dim, const int indent_level) {
     for (int i = 0; i < indent_level; i++) sb_append(sb, "  ");
     sb_append(sb,"[");
@@ -138,7 +125,7 @@ static void build_string(StringBuilder* sb, const Tensor* tensor, const int offs
 
 TensorError tensor_empty(Tensor* out, const int* shape, const int ndim) {
     if (tensor_alloc(out, shape, ndim) < 0) {
-        tensor_free(out);
+        tensor_destroy(out);
         return TENSOR_ERROR_NO_MEMORY;
     }
 
@@ -149,7 +136,7 @@ TensorError tensor_empty(Tensor* out, const int* shape, const int ndim) {
 
 TensorError tensor_from_data(Tensor* out, const float* data, const int* shape,const int ndim) {
     if (tensor_alloc(out, shape, ndim) < 0) {
-        tensor_free(out);
+        tensor_destroy(out);
         return TENSOR_ERROR_NO_MEMORY;
     }
     memcpy(out->shape, shape, ndim * sizeof *out->shape);
@@ -160,7 +147,7 @@ TensorError tensor_from_data(Tensor* out, const float* data, const int* shape,co
 
 TensorError tensor_zeros(Tensor* out, const int* shape, const int ndim) {
     if (tensor_alloc(out, shape, ndim) < 0) {
-        tensor_free(out);
+        tensor_destroy(out);
         return TENSOR_ERROR_NO_MEMORY;
     }
     memcpy(out->shape, shape, ndim * sizeof *out->shape);
@@ -173,7 +160,7 @@ TensorError tensor_zeros(Tensor* out, const int* shape, const int ndim) {
 
 TensorError tensor_ones(Tensor* out, const int* shape, const int ndim) {
     if (tensor_alloc(out, shape, ndim) < 0) {
-        tensor_free(out);
+        tensor_destroy(out);
         return TENSOR_ERROR_NO_MEMORY;
     }
     memcpy(out->shape, shape, ndim * sizeof *out->shape);
@@ -186,7 +173,7 @@ TensorError tensor_ones(Tensor* out, const int* shape, const int ndim) {
 
 TensorError tensor_fill(Tensor* out, const float num, const int* shape,int ndim) {
     if (tensor_alloc(out, shape, ndim) < 0) {
-        tensor_free(out);
+        tensor_destroy(out);
         return TENSOR_ERROR_NO_MEMORY;
     }
     memcpy(out->shape, shape, ndim * sizeof *out->shape);
@@ -197,15 +184,13 @@ TensorError tensor_fill(Tensor* out, const float num, const int* shape,int ndim)
     return TENSOR_ERROR_NONE;
 }
 
-void tensor_free(Tensor* tensor) {
+void tensor_destroy(Tensor* tensor) {
     free(tensor->data);
     free(tensor->shape);
-    free(tensor);
 };
 
-void tensor_view_free(Tensor* tensor) {
+void tensor_view_destroy(Tensor* tensor) {
     free(tensor->shape);
-    free(tensor);
 }
 
 float tensor_get(const Tensor* tensor, const int* idx) {
@@ -215,10 +200,10 @@ float tensor_get(const Tensor* tensor, const int* idx) {
     }
     return tensor->data[offset];
 }
-TensorError tensor_expand(Tensor* out, const Tensor* in, const int* new_shape, const int new_ndim) {
+TensorError tensor_broadcast_to(Tensor* out, const Tensor* in, const int* new_shape, const int new_ndim) {
     if (in->ndim > new_ndim) return TENSOR_ERROR_INVALID_ARGUMENT;
     if (tensor_alloc_view(out, in, new_ndim) < 0) {
-        tensor_view_free(out);
+        tensor_view_destroy(out);
         return TENSOR_ERROR_NO_MEMORY;
     }
 
@@ -233,8 +218,8 @@ TensorError tensor_expand(Tensor* out, const Tensor* in, const int* new_shape, c
 
     //Overlapping dims
     for (int i = diff; i < new_ndim; i++) {
-        int new = new_shape[i];
-        int old = in->shape[i - diff];
+        const int new = new_shape[i];
+        const int old = in->shape[i - diff];
 
         if (new == old) {
             out->strides[i] = in->strides[i - diff];
@@ -242,8 +227,8 @@ TensorError tensor_expand(Tensor* out, const Tensor* in, const int* new_shape, c
         else if (new == 1 || old == 1) {
             out->strides[i] = 0;
         }else {
-            tensor_view_free(out);
-            return TENSOR_ERROR_CANNOT_EXPAND;
+            tensor_view_destroy(out);
+            return TENSOR_ERROR_CANNOT_BROADCAST;
         }
 
         out->shape[i] = new_shape[i];
@@ -264,6 +249,22 @@ TensorError tensor_promote_to_col(Tensor* out, const Tensor* in) {
 
     out->strides[0] = 1;
     out->strides[1] = 0;
+
+    out->data = in->data;
+
+    return TENSOR_ERROR_NONE;
+}
+
+TensorError tensor_promote_to_row(Tensor* out, const Tensor* in) {
+    if (in->ndim > 1) return TENSOR_ERROR_INVALID_ARGUMENT;
+
+    if (tensor_alloc_view(out, in, 2) < 0) return TENSOR_ERROR_NO_MEMORY;
+
+    out->shape[0] = 1;
+    out->shape[1] = in->shape[0];;
+
+    out->strides[0] = 0;
+    out->strides[1] = 1;
 
     out->data = in->data;
 

@@ -75,19 +75,20 @@ TensorError tensor_ones(Tensor* out,const int* shape,int ndim);
  */
 TensorError tensor_fill(Tensor* out, float num, const int* shape,int ndim);
 
+
 /**
- * Free ALL memory associated with the tensor (data, shape, strides)
+ * Free ALL heap memory associated with the tensor (data, shape, strides).
  * After calling, the tensor should NOT be used again
  * @param tensor Tensor to be freed
  */
-void tensor_free(Tensor* tensor);
+void tensor_destroy(Tensor* tensor);
 
 /**
  * Free just the tensor's metadata (shape,strides) and not the underlying shared data buffer.
  * After calling, the tensor should NOT be used again
  * @param tensor Tensor to be freed
  */
-void tensor_view_free(Tensor* tensor);
+void tensor_view_destroy(Tensor* tensor);
 
 /**
  *
@@ -98,14 +99,14 @@ void tensor_view_free(Tensor* tensor);
 float tensor_get(const Tensor* tensor, const int* idx);
 
 /**
- * Takes the given tensor and expands the dimensions to fit the new shape
+ * Takes the given tensor and broadcasts the dimensions to fit the new shape
  * @param out Tensor pointer to allocate the new tensor at
  * @param in Original tensor pointer
  * @param new_shape Array of length new_ndim specifying the new size of each dimension
  * @param new_ndim  New number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_expand(Tensor* out, const Tensor* in,
+TensorError tensor_broadcast_to(Tensor* out, const Tensor* in,
                           const int* new_shape, int new_ndim);
 
 /**
@@ -116,6 +117,13 @@ TensorError tensor_expand(Tensor* out, const Tensor* in,
  */
 TensorError tensor_promote_to_col(Tensor* out, const Tensor* in);
 
+/**
+ * Takes a one dimensional tensor and promotes it to a 2D row vector (Shape: [1,N])
+ * @param out Tensor pointer to allocate the new tensor at
+ * @param in Original tensor pointer
+ * @return TENSOR_ERROR_NONE on success, error code otherwise
+ */
+TensorError tensor_promote_to_row(Tensor* out, const Tensor* in);
 
 /**
  * Creates a string representing the tensor's data and shape

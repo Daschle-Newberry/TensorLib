@@ -4,7 +4,8 @@ project(TensorLib C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_library(TensorLib)
+add_library(TensorLib
+        src/tensor_operations.c)
 target_sources(TensorLib
         PRIVATE
             src/tensor.c

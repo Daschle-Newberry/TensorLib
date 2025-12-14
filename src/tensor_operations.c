@@ -1,117 +1,120 @@
 #define MAX(a,b)((a) > (b) ? (a) : (b))
 #define MIN(a,b)((a) < (b) ? (a) : (b))
-
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
+#define MAX_TENSOR(a,b)(((a->ndim) >= (b->ndim)) ? (a) : (b))
+#define MIN_TENSOR(a,b)(((a->ndim) < (b->ndim)) ? (a) : (b))
 
 #include "tensor.h"
 
+static int element_wise_broadcast(Tensor* out, const Tensor* a, const Tensor* b) {
+    const Tensor* max = MAX_TENSOR(a,b);
+    const Tensor* min = MIN_TENSOR(a,b);
 
-TensorError elementwise_broadcast(Tensor* out, const Tensor* a, const Tensor* b) {
-    const int max_ndim = MAX(a->ndim, b->ndim);
-    const int min_ndim = MIN(a->ndim, b->ndim);
-    const int diff = max_ndim - min_ndim;
+    const int diff = max->ndim - min->ndim;
 
-
-    int shape[max_ndim];
+    int shape[max->ndim];
 
     for (int i = 0; i < diff; i++) {
-
+        shape[i] = max->shape[i];
     }
 
+    for (int i = diff; i < max->ndim; i++) {
+        const int a_dim = max->shape[i];
+        const int b_dim = min->shape[i - diff];
 
-    return TENSOR_ERROR_NONE;
+        if (a_dim == b_dim || b_dim == 1) shape[i] = a_dim;
+        else if (a_dim == 1) shape[i] = b_dim;
+        else return -1;
+    }
+
+    tensor_empty(out,(const int*) &shape,max->ndim);
+
+    return 0;
 }
 
-TensorError matrix_broadcast(Tensor* out, Tensor* a, Tensor* b) {
-    if (a->ndim != b->ndim) return TENSOR_ERROR_CANNOT_BROADCAST;
-    int out_shape[a->ndim];
 
-    for (int i = 0; i < a->ndim - 2; i++) {
-        if (a->shape[i] != b->shape[i] && a->shape[i] != 1 && b->shape[i] != 1){
-            return TENSOR_ERROR_CANNOT_BROADCAST;
+static int matrix_broadcast(Tensor* out, const Tensor* a, const Tensor* b) {
+    const Tensor* max = MAX_TENSOR(a,b);
+    const Tensor* min = MIN_TENSOR(a,b);
+
+    const int diff = max->ndim - min->ndim;
+
+    int shape[max->ndim];
+
+    for (int i = 0; i < diff; i++) {
+        shape[i] = max->shape[i];
+    }
+
+    for (int i = diff; i < max->ndim - 2; i++) {
+        const int a_dim = max->shape[i];
+        const int b_dim = min->shape[i - diff];
+
+        if (a_dim == b_dim || b_dim == 1) shape[i] = a_dim;
+        else if (a_dim == 1) shape[i] = b_dim;
+        else return -1;
+    }
+
+    shape[max->ndim - 1] = b->shape[b->ndim - 1];
+    shape[max->ndim - 2] = a->shape[a->ndim - 2];
+
+    tensor_empty(out,(const int*) &shape,max->ndim);
+
+    return 0;
+}
+
+
+static TensorError element_wise_operation(Tensor* out, const Tensor* a, const Tensor* b, float (*op)(float,float)){
+        if (element_wise_broadcast(out,a,b) < 0) return TENSOR_ERROR_CANNOT_BROADCAST;
+        Tensor a_view, b_view;
+        tensor_broadcast_to(&a_view, a, out->shape, out->ndim);
+        tensor_broadcast_to(&b_view, b, out->shape, out->ndim);
+
+        int total = 1;
+        for (int d = 0; d < out->ndim; d++) total *= out->shape[d];
+
+        for (int idx = 0; idx < total; idx++) {
+            int offset_a = 0;
+            int offset_b = 0;
+            int tmp = idx;
+
+            for (int dim = 0; dim < out->ndim; dim++) {
+                const int d_idx = tmp / out->strides[dim];
+                tmp %= out->strides[dim];
+
+                offset_a += d_idx * a_view.strides[dim];
+                offset_b += d_idx * b_view.strides[dim];
+            }
+
+            out->data[idx] = op(a_view.data[offset_a], b_view.data[offset_b]);
         }
-        out_shape[i] = a->shape[i] != 1 ? a->shape[i] : b->shape[i];
+
+        return TENSOR_ERROR_NONE;
     }
-
-    out_shape[a->ndim - 2] = a->shape[a->ndim - 2];
-    out_shape[a->ndim - 1] = b->shape[b->ndim - 1];
-
-    const TensorError err = tensor_init(out,NULL,out_shape, a->ndim);
-
-    if (err != TENSOR_ERROR_NONE) return err;
-
-    out_shape[a->ndim - 1] = a->shape[a->ndim - 1];
-    out_shape[a->ndim - 2] = a->shape[a->ndim - 2];
-    tensor_broadcast_to(a,out->shape,out->ndim, true);
-
-    out_shape[a->ndim - 1] = b->shape[b->ndim - 1];
-    out_shape[a->ndim - 2] = b->shape[b->ndim - 2];
-    tensor_broadcast_to(b, out->shape, out->ndim,true);
-
-    return TENSOR_ERROR_NONE;
-}
-
-TensorError element_wise_operation(Tensor* out, const Tensor* a, const Tensor* b, float (*op)(float,float)) {
-    Tensor a_copy;
-    Tensor b_copy;
-
-    const Tensor* max_tensor = a->ndim < b->ndim ? b : a;
-    const Tensor* min_tensor = a->ndim < b->ndim ? a : b;
-
-    tensor_shallow_copy(&a_copy,max_tensor,max_tensor->ndim);
-    tensor_shallow_copy(&b_copy,min_tensor,max_tensor->ndim);
-
-    const TensorError err = elementwise_broadcast(out, &a_copy,&b_copy);
-
-    if (err != TENSOR_ERROR_NONE) return err;
-
-    int total = 1;
-    for (int d = 0; d < out->ndim; d++) total *= out->shape[d];
-
-    for (int idx = 0; idx < total; idx++) {
-        int offset_a = 0;
-        int offset_b = 0;
-        int tmp = idx;
-
-        for (int dim = 0; dim < out->ndim; dim++) {
-            const int d_idx = tmp / out->strides[dim];
-            tmp %= out->strides[dim];
-
-            offset_a += d_idx * a_copy.strides[dim];
-            offset_b += d_idx * b_copy.strides[dim];
-        }
-
-        out->data[idx] = op(a_copy.data[offset_a], b_copy.data[offset_b]);
-    }
-
-    return TENSOR_ERROR_NONE;
-}
 
 TensorError tensor_mat_mul(Tensor* out, const Tensor* a, const Tensor* b) {
-    Tensor a_copy;
-    Tensor b_copy;
+    Tensor a_tmp = *a;
+    Tensor b_tmp = *b;
 
-    const int total_dims = MAX(2,MAX(a->ndim,b->ndim));
+    if (a->ndim < 2) tensor_promote_to_row(&a_tmp, a);
+    if (b->ndim < 2) tensor_promote_to_col(&b_tmp, b);
 
-    tensor_shallow_copy(&a_copy,a,total_dims);
-    tensor_shallow_copy(&b_copy,b,total_dims);
+    const int a_cols = a->shape[a->ndim - 1];
+    const int b_rows = b->shape[b->ndim - 2];
 
-    if (b->ndim == 1) {
-        tensor_promote_to_col(&b_copy);
-    }
+    if (a_cols != b_rows) return TENSOR_ERROR_INPUT_DIM_MISMATCH;
 
-    const int a_k = a_copy.shape[a_copy.ndim - 1];
-    const int b_k = b_copy.shape[b_copy.ndim - 2];
+    if (matrix_broadcast(out, &a_tmp,&b_tmp) < 0) return TENSOR_ERROR_CANNOT_BROADCAST;
 
-    if (a_k != b_k) {return TENSOR_ERROR_INPUT_DIM_MISMATCH;}
-
-    const TensorError err = matrix_broadcast(out, &a_copy, &b_copy);
-
-    if (err != TENSOR_ERROR_NONE) return err;
-
-
+    //NxM
+    int shape[out->ndim];
+    int total = out->length;
+     for (int idx = 0; idx < total; idx++) {
+         int tmp = idx;
+         for (int dim = 0; dim < out->ndim; dim++) {
+             shape[dim] = tmp % out->shape[dim];
+             tmp /= out->shape[dim];
+         }
+     }
+    return TENSOR_ERROR_NONE;
 }
 float add_op(const float x, const float y) {return x + y;}
 float sub_op(const float x, const float y) {return x - y;}

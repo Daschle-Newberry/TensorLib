@@ -1,5 +1,6 @@
 #ifndef STRING_BUILDER_H
 #define STRING_BUILDER_H
+#include <stddef.h>
 
 typedef struct {
     char* buff;
