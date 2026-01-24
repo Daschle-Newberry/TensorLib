@@ -35,7 +35,7 @@ typedef struct {
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_empty(Tensor* out, const int* shape, int ndim);
+TensorError tensor_init_empty(Tensor* out, const int* shape, int ndim);
 
 /**
  * Allocate and new tensor with a copy of the given data
@@ -45,16 +45,16 @@ TensorError tensor_empty(Tensor* out, const int* shape, int ndim);
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_from_data(Tensor* out, const float* data, const int* shape,int ndim);
+TensorError tensor_init_from_data(Tensor* out, const float* data, const int* shape,int ndim);
 
 /**
  * Allocate a new tensor filled with zeros
- * @param out Tensor pointer to allocate the new tensor at
+ * @param out1 Tensor pointer to allocate the new tensor at
  * @param shape Array of length ndim specifying the size of each dimension
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_zeros(Tensor* out,const int* shape,int ndim);
+TensorError tensor_init_zeros(Tensor* out,const int* shape,int ndim);
 
 /**
  * Allocate a new tensor filled with ones
@@ -63,7 +63,7 @@ TensorError tensor_zeros(Tensor* out,const int* shape,int ndim);
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_ones(Tensor* out,const int* shape,int ndim);
+TensorError tensor_init_ones(Tensor* out,const int* shape,int ndim);
 
 /**
  * Allocate a new tensor filled with a given value
@@ -73,7 +73,7 @@ TensorError tensor_ones(Tensor* out,const int* shape,int ndim);
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_fill(Tensor* out, float num, const int* shape,int ndim);
+TensorError tensor_init_fill(Tensor* out, float num, const int* shape,int ndim);
 
 
 /**
@@ -107,6 +107,17 @@ float tensor_get(const Tensor* tensor, const int* idx);
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
 TensorError tensor_broadcast_to(Tensor* out, const Tensor* in,
+                          const int* new_shape, int new_ndim);
+
+/**
+ * Takes the given tensor and broadcasts all dimensions except the last two to fit the new shape
+ * @param out Tensor pointer to allocate the new tensor at
+ * @param in Original tensor pointer
+ * @param new_shape Array of length new_ndim specifying the new size of each dimension
+ * @param new_ndim  New number of dimensions
+ * @return TENSOR_ERROR_NONE on success, error code otherwise
+ */
+TensorError tensor_matrix_broadcast_to(Tensor* out, const Tensor* in,
                           const int* new_shape, int new_ndim);
 
 /**

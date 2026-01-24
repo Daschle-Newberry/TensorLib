@@ -3,6 +3,8 @@
 #define MAX_TENSOR(a,b)(((a->ndim) >= (b->ndim)) ? (a) : (b))
 #define MIN_TENSOR(a,b)(((a->ndim) < (b->ndim)) ? (a) : (b))
 
+#include <string.h>
+#include <stdio.h>
 #include "tensor.h"
 
 static int element_wise_broadcast(Tensor* out, const Tensor* a, const Tensor* b) {
@@ -26,7 +28,7 @@ static int element_wise_broadcast(Tensor* out, const Tensor* a, const Tensor* b)
         else return -1;
     }
 
-    tensor_empty(out,(const int*) &shape,max->ndim);
+    tensor_init_empty(out,(const int*) &shape,max->ndim);
 
     return 0;
 }
@@ -56,7 +58,7 @@ static int matrix_broadcast(Tensor* out, const Tensor* a, const Tensor* b) {
     shape[max->ndim - 1] = b->shape[b->ndim - 1];
     shape[max->ndim - 2] = a->shape[a->ndim - 2];
 
-    tensor_empty(out,(const int*) &shape,max->ndim);
+    tensor_init_empty(out,(const int*) &shape,max->ndim);
 
     return 0;
 }
@@ -90,6 +92,67 @@ static TensorError element_wise_operation(Tensor* out, const Tensor* a, const Te
         return TENSOR_ERROR_NONE;
     }
 
+void print_shape(int* shape, int ndim){
+    for(int i = 0; i < ndim; i++){
+        printf("%d ", shape[i]);
+    }
+}
+static inline float dot_product(
+                                const Tensor* a, const Tensor* b,
+                                int a_offset, int b_offset, int K,
+                                int a_col_stride, int b_row_stride
+                                ){
+    float sum = 0;
+    for(int i = 0; i < K; i++){
+        sum += a->data[a_offset + (i * a_col_stride)] * 
+               b->data[b_offset + (i * b_row_stride)];
+        }
+
+    return sum;
+}
+
+static void mat_mul(Tensor* out, const Tensor* a, const Tensor* b, const int* batch){
+    int out_batch_offset = 0;
+    int a_batch_offset = 0;
+    int b_batch_offset = 0;
+
+    for(int i = 0; i < out->ndim - 2; i++){
+        out_batch_offset += batch[i] * out->strides[i];
+        a_batch_offset += batch[i] * a->strides[i];
+        b_batch_offset += batch[i] * b->strides[i];
+    }
+
+    int M = a->shape[a->ndim - 2];
+    int K = a->shape[a->ndim - 1];
+    int N = b->shape[b->ndim -1];
+
+    int a_row_stride = a->strides[a->ndim - 2];
+    int a_col_stride = a->strides[a->ndim - 1];
+    int b_row_stride = b->strides[b->ndim - 2];
+    int b_col_stride = b->strides[b->ndim - 1];
+
+    int out_row_stride = out->strides[out->ndim - 2];
+    int out_col_stride = out->strides[out->ndim - 1];
+
+    for(int row_idx = 0; row_idx < M; row_idx++){
+        int a_row_offset = row_idx * a_row_stride;
+        int out_row_offset = row_idx * out_row_stride;
+
+        for(int col_idx = 0; col_idx < N; col_idx++){
+            int b_col_offset = col_idx * b_col_stride;
+            int out_col_offset = col_idx * out_col_stride;
+
+            float sum = dot_product(a, b, a_row_offset + a_batch_offset, 
+                                    b_col_offset + b_batch_offset, K,
+                                    a_col_stride, b_row_stride
+                                    );
+
+            out->data[out_batch_offset + out_row_offset + out_col_offset] = sum;
+        }
+
+    }
+
+}
 TensorError tensor_mat_mul(Tensor* out, const Tensor* a, const Tensor* b) {
     Tensor a_tmp = *a;
     Tensor b_tmp = *b;
@@ -104,18 +167,36 @@ TensorError tensor_mat_mul(Tensor* out, const Tensor* a, const Tensor* b) {
 
     if (matrix_broadcast(out, &a_tmp,&b_tmp) < 0) return TENSOR_ERROR_CANNOT_BROADCAST;
 
+    Tensor a_view, b_view;
+    tensor_matrix_broadcast_to(&a_view, &a_tmp, out->shape, out->ndim);
+    tensor_matrix_broadcast_to(&b_view, &b_tmp, out->shape, out->ndim);
+
     //NxM
     int shape[out->ndim];
-    int total = out->length;
-     for (int idx = 0; idx < total; idx++) {
-         int tmp = idx;
-         for (int dim = 0; dim < out->ndim; dim++) {
-             shape[dim] = tmp % out->shape[dim];
-             tmp /= out->shape[dim];
-         }
-     }
+    memset(shape, 0, sizeof shape);
+    
+    int max_overflow = out->ndim == 2;
+    do{
+        mat_mul(out,&a_view, &b_view,shape);
+        for(int d = out->ndim - 3; d >= 0; d--){
+            shape[d]++;
+            if(shape[d] >= out->shape[d]){
+                shape[d] = 0;
+                if(d == 0){
+                    max_overflow = 1;
+                    break;
+                }
+            }else break;
+            
+        }
+    }while(!max_overflow);
+
+    tensor_view_destroy(&a_tmp);
+    tensor_view_destroy(&b_tmp);
     return TENSOR_ERROR_NONE;
 }
+
+
 float add_op(const float x, const float y) {return x + y;}
 float sub_op(const float x, const float y) {return x - y;}
 float mul_op(const float x, const float y) {return x * y;}

@@ -1,8 +1,8 @@
-#include "string_builder.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "string_builder.h"
 
 void init_sb(StringBuilder* sb) {
     sb->buff = malloc(128);

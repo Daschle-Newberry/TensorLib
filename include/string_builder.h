@@ -12,4 +12,4 @@ void init_sb(StringBuilder* sb);
 void sb_append(StringBuilder* sb, const char* string);
 void sb_free(StringBuilder* sb);
 
-#endif //STRING_BUILDER_H
+#endif //STRING_BUILDER_H                                                                                                          ​error
