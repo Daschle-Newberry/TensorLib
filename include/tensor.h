@@ -1,6 +1,8 @@
 #ifndef TENSOR_H
 #define TENSOR_H
-#include <stdbool.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
 /**
  * Tensor error enum for different initialization or operation errors
  */
@@ -15,15 +17,32 @@ typedef enum {
     TENSOR_ERROR_COUNT,
 }TensorError;
 
+typedef enum{
+    T_TYPE_INT,
+    T_TYPE_FLOAT,
+    T_TYPE_DOUBLE,
+    T_TYPE_LONG,
+}TensorType;
+
 /**
  * Tensor structure representing an N-dimensional array of floats
  */
+// typedef struct {
+//     int ndim;     //< Number of dimensions
+//     int length;   //< Length of the contiguous data array
+//     int* shape;   //< Pointer to an array containing the sizes of each dimension
+//     int* strides; //< Pointer to an array containing the strides of each dimension
+//     float* data;  //< Pointer to an array of floats
+// } Tensor;
+
 typedef struct {
-    int ndim;     //< Number of dimensions
-    int length;   //< Length of the contiguous data array
-    int* shape;   //< Pointer to an array containing the sizes of each dimension
-    int* strides; //< Pointer to an array containing the strides of each dimension
-    float* data;  //< Pointer to an array of floats
+    size_t ndim;
+    size_t length;
+    size_t* shape;
+    size_t* strides;
+    uint8_t* data;
+    size_t dbytes;
+    TensorType dtype;
 } Tensor;
 
 //TENSOR
@@ -35,7 +54,7 @@ typedef struct {
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_init_empty(Tensor* out, const int* shape, int ndim);
+TensorError tensor_init_empty(Tensor* out, const size_t* shape, size_t ndim, TensorType dtype);
 
 /**
  * Allocate and new tensor with a copy of the given data
@@ -45,7 +64,7 @@ TensorError tensor_init_empty(Tensor* out, const int* shape, int ndim);
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_init_from_data(Tensor* out, const float* data, const int* shape,int ndim);
+TensorError tensor_init_from_data(Tensor* out, const void* data, const size_t* shape, size_t ndim, TensorType dtype);
 
 /**
  * Allocate a new tensor filled with zeros
@@ -54,7 +73,7 @@ TensorError tensor_init_from_data(Tensor* out, const float* data, const int* sha
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_init_zeros(Tensor* out,const int* shape,int ndim);
+TensorError tensor_init_zeros(Tensor* out, const size_t* shape, size_t ndim, TensorType dtype);
 
 /**
  * Allocate a new tensor filled with ones
@@ -63,7 +82,7 @@ TensorError tensor_init_zeros(Tensor* out,const int* shape,int ndim);
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_init_ones(Tensor* out,const int* shape,int ndim);
+TensorError tensor_init_ones(Tensor* out, const size_t* shape, size_t ndim, TensorType dtype);
 
 /**
  * Allocate a new tensor filled with a given value
@@ -73,8 +92,7 @@ TensorError tensor_init_ones(Tensor* out,const int* shape,int ndim);
  * @param ndim Number of dimensions
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
-TensorError tensor_init_fill(Tensor* out, float num, const int* shape,int ndim);
-
+TensorError tensor_init_fill(Tensor* out, const void* num, const size_t* shape,size_t ndim, TensorType dtype);
 
 /**
  * Free ALL heap memory associated with the tensor (data, shape, strides).
@@ -91,15 +109,7 @@ void tensor_destroy(Tensor* tensor);
 void tensor_view_destroy(Tensor* tensor);
 
 /**
- *
- * @param tensor Tensor to read from
- * @param idx Integer array representing multidimensional indices
- * @return the value at those indices
- */
-float tensor_get(const Tensor* tensor, const int* idx);
-
-/**
- * Takes the given tensor and broadcasts the dimensions to fit the new shape
+ *  * Takes the given tensor and broadcasts the dimensions to fit the new shape
  * @param out Tensor pointer to allocate the new tensor at
  * @param in Original tensor pointer
  * @param new_shape Array of length new_ndim specifying the new size of each dimension
