@@ -5,6 +5,7 @@
 
 #include "tensor.h"
 #include "string_builder.h"
+#include "tensor_format.h"
 
 static const char* TensorErrorStrings[] = {
     [TENSOR_ERROR_NONE] = "TENSOR_ERROR_NONE",
@@ -68,25 +69,28 @@ static int tensor_alloc_view(Tensor* out) {
 
 static void tensor_generate_strides(Tensor* out) {
     out->strides[out->ndim - 1] = 1;
-    for (size_t i = out->ndim - 2; i >= 0; i--) {
-        out->strides[i] = out->shape[i+1] * out->strides[i + 1] * out->dbytes;
+    
+    //Hacky iteration to avoid unsigned type size_t from underflowing
+    for (size_t i = out->ndim - 1; i > 0; i--) {
+        out->strides[i - 1] = out->shape[i] * out->strides[i] * out->dbytes;
     }
 }
 
-static void build_string(StringBuilder* sb, const Tensor* tensor, size_t offset, size_t dim, const size_t indent_level) {
+
+static void build_string(StringBuilder* sb, const Tensor* tensor, size_t offset, size_t dim, const size_t indent_level, TensorFormatFunc formatter) {
     for (int i = 0; i < indent_level; i++) sb_append(sb, "  ");
     sb_append(sb,"[");
 
     for (int i = 0; i < tensor->shape[dim]; i++) {
-        int current_offset = offset + i * tensor->strides[dim];
+        int current_offset = offset + i;
 
         if (dim == tensor->ndim - 1) {
             char buff[32];
-            snprintf(buff, sizeof(buff),"%.6g",tensor->data[current_offset]);
+            formatter(buff, 32,tensor->data,current_offset);
             sb_append(sb,buff);
         }else {
             sb_append(sb, "\n");
-            build_string(sb,tensor,current_offset, dim + 1, indent_level + 1);
+            build_string(sb,tensor,current_offset, dim + 1, indent_level + 1,formatter);
         }
 
         if (i < tensor->shape[dim] - 1) sb_append(sb, ", ");
@@ -109,6 +113,7 @@ TensorError tensor_init_empty(Tensor* out, const size_t* shape, size_t ndim, Ten
     if (tensor_alloc(out) < 0) return TENSOR_ERROR_NO_MEMORY;
 
     memcpy(out->shape, shape, ndim * sizeof *out->shape);
+
     tensor_generate_strides(out);
     return TENSOR_ERROR_NONE;
 }
@@ -145,7 +150,7 @@ TensorError tensor_init_zeros(Tensor* out, const size_t* shape, size_t ndim, Ten
     return TENSOR_ERROR_NONE;
 }
 
-TensorError tensot_init_ones(Tensor* out, const size_t* shape, size_t ndim, TensorType dtype){
+TensorError tensor_init_ones(Tensor* out, const size_t* shape, size_t ndim, TensorType dtype){
     out->dbytes = TypeBytes[dtype];
     out->dtype = dtype;
     out->length = compute_flat_length(shape, ndim);
@@ -365,14 +370,15 @@ TensorError tensor_promote_to_row(Tensor* out, const Tensor* in) {
     return TENSOR_ERROR_NONE;
 }
 
-const char* tensor_to_string(const Tensor* tensor) {
+char* tensor_to_string(const Tensor* tensor) {
     StringBuilder sb;
     init_sb(&sb);
-    build_string(&sb,tensor,0, 0, 0);
+    TensorFormatFunc formatter = tensor_get_data_formatter(tensor->dtype);
+    build_string(&sb,tensor,0, 0, 0, formatter);
     return sb.buff;
 }
 
-const char* tensor_metadata_to_string(const Tensor* tensor) {
+char* tensor_metadata_to_string(const Tensor* tensor) {
     StringBuilder sb;
     init_sb(&sb);
 

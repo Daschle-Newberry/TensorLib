@@ -1,11 +1,14 @@
 #ifndef TENSOR_H
 #define TENSOR_H
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 /**
  * Tensor error enum for different initialization or operation errors
  */
+
+
 typedef enum {
     TENSOR_ERROR_NONE,
     TENSOR_ERROR_NO_MEMORY,
@@ -149,16 +152,16 @@ TensorError tensor_promote_to_row(Tensor* out, const Tensor* in);
 /**
  * Creates a string representing the tensor's data and shape
  * @param tensor Tensor to create a string from
- * @return String representing the tensor
+ * @return Heap allocated string representing the tensor, called must free
  */
-const char* tensor_to_string(const Tensor* tensor);
+char* tensor_to_string(const Tensor* tensor);
 
 /**
  * Creates a string representing the tensor's metadata (shape, strides, ndim)
  * @param tensor Tensor to create a string from
- * @return String representing the tensor's metadata
+ * @return Heap allocated string representing the tensor's metadata, called must free
  */
-const char* tensor_metadata_to_string(const Tensor* tensor);
+char* tensor_metadata_to_string(const Tensor* tensor);
 
 /**
  * Creates a string from the TensorError enum
