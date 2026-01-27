@@ -117,7 +117,7 @@ void tensor_view_destroy(Tensor* tensor);
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
 TensorError tensor_broadcast_to(Tensor* out, const Tensor* in,
-                          const int* new_shape, int new_ndim);
+                          const size_t* new_shape, size_t new_ndim);
 
 /**
  * Takes the given tensor and broadcasts all dimensions except the last two to fit the new shape
@@ -128,7 +128,7 @@ TensorError tensor_broadcast_to(Tensor* out, const Tensor* in,
  * @return TENSOR_ERROR_NONE on success, error code otherwise
  */
 TensorError tensor_matrix_broadcast_to(Tensor* out, const Tensor* in,
-                          const int* new_shape, int new_ndim);
+                          const size_t* new_shape, size_t new_ndim);
 
 /**
  * Takes a one dimensional tensor and promotes it to a 2D column vector (Shape: [N,1])
