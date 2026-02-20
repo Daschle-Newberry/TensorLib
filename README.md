@@ -15,8 +15,9 @@ by other libraries, and aims to achieve similar results to NumPy.
 
 ### Prerequisites
 
-- **C compiler (e.g., GCC or Clang)** 
-- **CMake ≥ 3.10 (https://cmake.org/download/)**
+- **GCC (https://gcc.gnu.org/install/)** 
+- **Make (https://www.gnu.org/software/make/)**
+- **GNU ar (https://www.gnu.org/software/binutils/)**
 
 ### Build steps
 
@@ -91,5 +92,6 @@ void main(){
 - ~~SIMD~~
 - ~~GPU acceleration~~
 - ~~BLAS~~
+
 
 
