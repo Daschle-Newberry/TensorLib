@@ -25,19 +25,19 @@ by other libraries, and aims to achieve similar results to NumPy.
 git clone https://github.com/Daschle-Newberry/TensorLib
 cd TensorLib
 ```
-2. Generate build files
+2. Generate library
 
 ```commandline
-cmake -B build -G "Your Build System"
+make
 ```
 
-3. Build the project
+3. Optionally run test executable
 ```commandline
-cmake --build build
+make run
 ```
 
 ## Example
-```c++
+```c
 #inlcude "tensor.h"
 
 void main(){
@@ -55,7 +55,14 @@ void main(){
     tensor_mat_mul(&out, &a, &b);
     
     //Print the result
-    printf("%s\n", tensor_to_string(&out)) 
+    char* buff = tensor_to_string(&out);
+    printf("%s\n", buff); 
+
+    //free memory
+    free(buff);
+    tensor_destroy(&a);
+    tensor_destroy(&b);
+    tensor_destroy(&out);
 }
 
 ```
@@ -69,6 +76,7 @@ void main(){
 - Variety of initialization tools, including from data, empty, zeros, ones, or fill.
 - Tensor view tools such as column promotion, expand, ect. 
 - Debug and visualization tools such as metadata to string or tensor to string.
+- ~~Type generic tensors~~
 
 ### Tensor Operations
 - Elementwise broadcasting
@@ -77,6 +85,7 @@ void main(){
 - Matrix multiplication
 - ~~Matrix transpose~~
 - ~~Scalar multiplication~~
+- ~~Type generic operations~~
 
 ### Optimizations
 - ~~SIMD~~

@@ -191,8 +191,8 @@ TensorError tensor_mat_mul(Tensor* out, const Tensor* a, const Tensor* b) {
         }
     }while(!max_overflow);
 
-    tensor_view_destroy(&a_tmp);
-    tensor_view_destroy(&b_tmp);
+    tensor_view_destroy(&a_view);
+    tensor_view_destroy(&b_view);
     return TENSOR_ERROR_NONE;
 }
 
