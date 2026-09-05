@@ -1,3 +1,11 @@
-build/
-cmake-build-debug/
-local/
+*
+
+!.gitignore
+!*/
+!Makefile
+!src/
+!src/**
+!include/
+!include/**
+!tests/
+!tests/**

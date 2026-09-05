@@ -1,35 +1,50 @@
 CC = gcc
-CCFLAGS = -std=c11 -g -fsanitize=address -Iinclude
+CCFLAGS = \
+	-std=c11 \
+	-Iinclude	\
+	-Wall	\
+	-Wextra \
+	-fanalyzer \
+	-fsanitize=address \
+	-g \
+	-O0
 
-LIB_NAME = TensorLib
-LIB_FILE = build/lib${LIB_NAME}.a
+LFLAGS = -shared
 
-EXEC = build/TensorLibTest
+LIBNAME = tensorlib
+TARGET = $(BUILDDIR)/lib$(LIBNAME).a
 
-SRC_DIR = src
-BUILD_DIR = build
-TEST_DIR = test
+SRCDIR = src
+TESTDIR = tests
+BUILDDIR = build
+TESTBUILDDIR = $(BUILDDIR)/tests
 
-LIB_SRC = ${wildcard ${SRC_DIR}/*.c}
-LIB_OBJS = ${patsubst ${SRC_DIR}/%.c,${BUILD_DIR}/%.o, ${LIB_SRC}} 
+SRC = $(shell find $(SRCDIR) -name '*.c')
+TESTSRC = $(shell find $(TESTDIR) -name '*.c')
 
-TEST_SRC = ${wildcard ${TEST_DIR}/*.c}
-TEST_OBJS = ${patsubst ${TEST_DIR}/%.c,${BUILD_DIR}/%.o, ${TEST_SRC}} 
+TESTBIN = $(TESTSRC:$(TESTDIR)/%.c=$(TESTBUILDDIR)/%) 
 
-${LIB_FILE}: ${LIB_OBJS}
-	ar rcs $@ ${LIB_OBJS}
+OBJ = $(SRC:$(SRCDIR)/%.c=$(BUILDDIR)/%.o)
+TESTOBJ = $(TESTSRC:$(TESTDIR)/%.c=$(BUILDDIR)/%.o)
 
-${EXEC}: ${LIB_FILE} ${TEST_OBJS}
-	${CC} ${CCFLAGS} ${TEST_OBJS} ${LIB_FILE} -o $@
+$(TARGET): $(OBJ)
+	ar rcs $@ $<
 
-${BUILD_DIR}/%.o: ${SRC_DIR}/%.c
-	${CC} ${CCFLAGS} -c $< -o $@
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CCFLAGS) -c $< -o $@
 
-${BUILD_DIR}/%.o: ${TEST_DIR}/%.c
-	${CC} ${CCFLAGS} -c $< -o $@
+$(TESTBUILDDIR)/%: $(TESTDIR)/%.c $(TARGET)
+	@mkdir -p $(dir $@)
+	$(CC) $(CCFLAGS) $< -L$(BUILDDIR) -l$(LIBNAME) -o $@
 
-run: ${EXEC}
-	./${EXEC}
+test: $(TESTBIN)
+	@for test in $(TESTBIN); do \
+		echo "Running $$test"; \
+		$$test || exit 1; \
+	done
 
+.PHONY:
 clean:
-	rm -f ${BUILD_DIR}/*.o ${LIB_FILE} ${EXEC}
+	rm -rf $(BUILDDIR)
+
