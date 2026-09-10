@@ -2,6 +2,8 @@ CC = gcc
 CCFLAGS = \
 	-std=c11 \
 	-Iinclude	\
+	-Isrc \
+	-Itests \
 	-Wall	\
 	-Wextra \
 	-fanalyzer \
