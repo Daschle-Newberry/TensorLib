@@ -4,6 +4,7 @@ CCFLAGS = \
 	-Iinclude	\
 	-Isrc \
 	-Itests \
+	-lm \
 	-Wall	\
 	-Wextra \
 	-fanalyzer \

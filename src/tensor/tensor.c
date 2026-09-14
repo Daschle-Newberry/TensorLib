@@ -87,7 +87,7 @@ Tensor* tensor_create_empty(
     *err = error;
 
   //Validate params
-  if((ndim != 0 && !shape) || !validate_shape(ndim, shape)) {
+  if((ndim == 0) != (shape == NULL) || !validate_shape(ndim, shape)) {
     error = TENSOR_ERROR_INVALID_ARGUMENT;
     goto cleanup;
   }
