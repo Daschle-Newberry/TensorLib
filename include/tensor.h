@@ -36,6 +36,15 @@ TensorError tensor_init_empty(
     const size_t shape[ndim]
     );
 
+
+
+Tensor* tensor_create_empty(
+    TensorDType type,
+    size_t ndim,
+    const size_t shape[ndim],
+    TensorError* err
+    );
+
 /**
  * @brief Free ALL heap memory associated with the tensor (data, shape, strides).
  *
