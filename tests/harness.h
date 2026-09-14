@@ -1,3 +1,8 @@
+#ifndef HARNESS_H
+#define HARNESS_H
+
+#include <stdio.h>
+
 #define RUN(name) test_##name()
 
 #define TEST(name) \
@@ -6,8 +11,13 @@
 #define ASSERT(cond) do { \
     if (!(cond)) { \
         fprintf(stderr, \
-            "FAIL: %s:%d: %s\n", \
-            __FILE__, __LINE__, #cond); \
-        return false; \
+            "\e[1;31mFAIL\e[0m: %s\n    at %s:%d\n", \
+             #cond, __FILE__, __LINE__); \
     } \
+    else {\
+        fprintf(stderr, \
+            "\e[1;32mPASS\e[0m: %s\n", #cond); \
+    }\
 } while (0)
+
+#endif
