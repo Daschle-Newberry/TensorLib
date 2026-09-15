@@ -21,23 +21,15 @@ typedef struct TensorStorage TensorStorage;
 typedef struct Tensor Tensor;
 
 /**
- * @brief Allocate an empty tensor (uninitialized data)
+ * @brief Creates an empty tensor (uninitialized data)
  *
- * @param out Tensor pointer to allocate the new tensor at
  * @param type The type of the tensor
  * @param ndim Number of dimensions
  * @param shape Array of length ndim specifying the size of each dimension.
- * @return TENSOR_ERROR_NONE on success, error code otherwise
+ * @param err Pointer to a TensorError for error codes
+ *
+ * @return Pointer to a heap allocated tensor on success, NULL otherwise
  */
-TensorError tensor_init_empty(
-    Tensor* out, 
-    TensorDType type, 
-    size_t ndim, 
-    const size_t shape[ndim]
-    );
-
-
-
 Tensor* tensor_create_empty(
     TensorDType type,
     size_t ndim,

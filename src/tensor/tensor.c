@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -12,34 +13,34 @@ static inline size_t dtype_size(TensorDType type) {
     case T_FLOAT64: return sizeof(double);
     case T_INT32:   return sizeof(int32_t);
     case T_INT64:   return sizeof(int64_t);
-    default:        return 0;
   }
+  return 0;
 }
 
-static inline bool validate_shape(size_t ndim, const size_t* shape) {
-  for(size_t i = 0; i < ndim; i++) {
-    if(shape[i] == 0) 
-      return false;
-  }
-
-  return true;
-}
-
-static inline TensorError get_data_buffer_size(
+static inline TensorError contiguous_size(
     size_t dbytes,
     size_t ndim, 
     const size_t shape[ndim],
-    size_t* res
+    size_t* out_bytes
 ) {
+  // Scalar
   if(ndim == 0) {
-    *res = dbytes;
+    *out_bytes = dbytes;
     return TENSOR_ERROR_NONE;
   }
 
   size_t len = 1;
 
+  bool empty = false;
   for(size_t i = 0; i < ndim; i++) {
-    if(len > SIZE_MAX / shape[i])
+    size_t dim = shape[i];
+    
+    if(dim == 0) {
+      empty = true;
+      dim = 1;
+    }
+
+    if(len > SIZE_MAX / dim)
       return TENSOR_ERROR_ARGUMENT_OVERFLOW;
 
     len *= shape[i]; 
@@ -48,26 +49,21 @@ static inline TensorError get_data_buffer_size(
   if(len > SIZE_MAX / dbytes)
     return TENSOR_ERROR_ARGUMENT_OVERFLOW;
 
-  *res = len * dbytes;
+  *out_bytes = empty ? 0 : len * dbytes;
 
   return TENSOR_ERROR_NONE;
 }
 
-// Overflow is assumed to be caught already by running get_data_buffer_size
-static inline TensorError compute_strides(
+// Precondition: continguous_size has succeeded for the same dbytes and shape
+static inline void compute_strides(
     size_t dbytes,
     size_t ndim, 
     const size_t shape[ndim], 
     size_t strides[ndim]
 ) {
   strides[ndim - 1] = dbytes;
-  for(size_t i = ndim - 1; i > 0; i--) { 
-    if(strides[i] > SIZE_MAX / shape[i])
-      return TENSOR_ERROR_ARGUMENT_OVERFLOW;
+  for(size_t i = ndim - 1; i > 0; i--) 
     strides[i - 1] = strides[i] * shape[i];
-  }
-
-  return TENSOR_ERROR_NONE;
 }
 
 Tensor* tensor_create_empty(
@@ -76,96 +72,80 @@ Tensor* tensor_create_empty(
     const size_t shape[ndim],
     TensorError* err
 ) {
-  Tensor* tensor = NULL;
+
+  Tensor* tensor         = NULL;
   TensorStorage* storage = NULL;
-  void* buff = NULL;
-  size_t* shape_copy = NULL;
-  size_t* strides = NULL;
+  void* buff             = NULL;
   
   TensorError error = TENSOR_ERROR_NONE;
-  if(err)
-    *err = error;
-
-  //Validate params
-  if((ndim == 0) != (shape == NULL) || !validate_shape(ndim, shape)) {
-    error = TENSOR_ERROR_INVALID_ARGUMENT;
-    goto cleanup;
-  }
   
   size_t dbytes = dtype_size(type);
-  
-  if(dbytes == 0) {
+  if((ndim == 0) != (shape == NULL) || dbytes == 0) {
     error = TENSOR_ERROR_INVALID_ARGUMENT;
     goto cleanup;
   }
-  
+ 
   size_t buff_size;
-  error = get_data_buffer_size(dbytes, ndim, shape, &buff_size);
+  error = contiguous_size(dbytes, ndim, shape, &buff_size);
 
   if(error)
     goto cleanup;
 
-  tensor = malloc(sizeof(*tensor));
+  // Allocate extra space for metadata
+  tensor = malloc(sizeof(*tensor) + 2 * ndim * sizeof(*tensor->meta));
   storage = malloc(sizeof(*storage));
-  buff = malloc(buff_size);  
-  
+  buff = malloc(buff_size);
+
   if(!tensor || !storage || !buff) {
     error = TENSOR_ERROR_NO_MEMORY;
     goto cleanup;
   }
 
-  if(ndim > 0) {
-    shape_copy = malloc(ndim * sizeof(*shape_copy));
-    strides = malloc(ndim * sizeof(*strides));
-
-    if(!shape_copy || !strides) {
-      error = TENSOR_ERROR_NO_MEMORY;
-      goto cleanup;
-    }
-    
-    memcpy(shape_copy, shape, ndim * sizeof(*shape_copy));
-    error = compute_strides(dbytes, ndim, shape, strides);
-    
-    if(error)
-      goto cleanup;
-  }
- 
-  *tensor = (Tensor) {
-    .storage = storage,
-    .type = type,
-    .ndim = ndim,
-    .shape = shape_copy,
-    .strides = strides,
-  };
-  
-  *tensor->storage = (TensorStorage) {
+  *storage = (TensorStorage)
+  {
     .refs = 1,
     .n = buff_size,
-    .data = buff,
+    .data = buff
   };
 
+  *tensor = (Tensor) 
+  {
+    .storage = storage,
+    .type    = type,
+    .ndim    = ndim,
+    .shape   = NULL,
+    .strides = NULL,
+  };
+  
+  if(ndim > 0) {
+    tensor->shape = tensor->meta;
+    tensor->strides = tensor->meta + ndim;
+    memcpy(tensor->shape, shape, ndim * sizeof(*shape));
+    compute_strides(dbytes, ndim, tensor->shape, tensor->strides);
+  }
+
+  if(err)
+    *err = error;
   return tensor;
-   
+
 cleanup:
   free(tensor);
   free(storage);
   free(buff);
-  free(shape_copy);
-  free(strides);
   if(err)
     *err = error;
   return NULL;
 }
 
-// Primary Allocation Steps
-// Metadata - Strides/Shape
-//      - Can fail on overflow
-//            - Product of shape > size_t_max
-//            - Product of shape * dbytes > size_t_max
-//            - Shape[i] * dbytes > size_tmax
-// TensorStorage
-//      - Can fail on malloc fail
-//
 void tensor_destroy(Tensor* tensor) {
-
+  if(!tensor)
+    return;
+  
+  if(tensor->storage->refs == 1) {
+    free(tensor->storage->data);
+    free(tensor->storage);
+  } else {
+    tensor->storage->refs--;
+  }
+  free(tensor);
 }

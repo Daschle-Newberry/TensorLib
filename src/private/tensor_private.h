@@ -17,6 +17,7 @@ struct Tensor {
   size_t ndim;              //< Number of dimensions in the tensor
   size_t* shape;            //< Array representing the tensor shape, length ndim
   size_t* strides;          //< Array of strides for each dim, length ndim
+  size_t meta[];
 };
 
 #endif
