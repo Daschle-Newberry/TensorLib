@@ -4,15 +4,15 @@ CCFLAGS = \
 	-Iinclude	\
 	-Isrc \
 	-Itests \
-	-lm \
+	-lm		\
 	-Wall	\
 	-Wextra \
 	-fanalyzer \
 	-fsanitize=address \
 	-g \
-	-O0
-
-LFLAGS = -shared
+	-O0 \
+	-MMD \
+	-MP
 
 LIBNAME = tensorlib
 TARGET = $(BUILDDIR)/lib$(LIBNAME).a
@@ -26,12 +26,10 @@ SRC = $(shell find $(SRCDIR) -name '*.c')
 TESTSRC = $(shell find $(TESTDIR) -name '*.c')
 
 TESTBIN = $(TESTSRC:$(TESTDIR)/%.c=$(TESTBUILDDIR)/%) 
-
 OBJ = $(SRC:$(SRCDIR)/%.c=$(BUILDDIR)/%.o)
-TESTOBJ = $(TESTSRC:$(TESTDIR)/%.c=$(BUILDDIR)/%.o)
 
 $(TARGET): $(OBJ)
-	ar rcs $@ $<
+	ar rcs $@ $^
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(dir $@)
@@ -51,3 +49,5 @@ test: $(TESTBIN)
 clean:
 	rm -rf $(BUILDDIR)
 
+-include $(OBJ:.o=.d)
+-include $(TESTBIN:%=%.d)
