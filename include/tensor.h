@@ -44,6 +44,13 @@ Tensor* tensor_create_empty(
  */
 void tensor_destroy(Tensor* tensor);
 
-
+/**
+ * @brief Generates a string representation of the given tensor.
+ *
+ * @param tensor Tensor to be stringified
+ *
+ * @return Pointer to a heap allocated null terminated string
+ */
+char* tensor_to_string(const Tensor* tensor);
 
 #endif

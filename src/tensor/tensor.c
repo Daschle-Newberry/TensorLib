@@ -1,10 +1,11 @@
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <inttypes.h>
 
 #include "tensor.h"
+#include "private/string_builder.h"
 #include "private/tensor_private.h"
 
 static inline size_t dtype_size(TensorDType type) {
@@ -72,7 +73,6 @@ Tensor* tensor_create_empty(
     const size_t shape[ndim],
     TensorError* err
 ) {
-
   Tensor* tensor         = NULL;
   TensorStorage* storage = NULL;
   void* buff             = NULL;
@@ -149,3 +149,93 @@ void tensor_destroy(Tensor* tensor) {
   }
   free(tensor);
 }
+
+
+static void format_element(
+    const Tensor* tensor,
+    size_t idx,
+    char* buf,
+    size_t buf_size
+) {
+  switch(tensor->type) {
+    case(T_FLOAT32): {
+      snprintf(buf, buf_size, "%6.6g", *(float*)(tensor->storage->data + idx));
+      break;
+    }
+    case(T_FLOAT64): {
+      snprintf(buf, buf_size, "%6.6g", *(double*)(tensor->storage->data + idx));
+      break;
+    }
+    case(T_INT32): {
+      snprintf(buf, buf_size, "%6" PRId32, *(int32_t*)(tensor->storage->data + idx));
+      break;
+    }
+    case(T_INT64): {
+      snprintf(buf, buf_size, "%6" PRId64, *(int64_t*)(tensor->storage->data + idx));
+      break;
+    }
+  }
+}
+
+// Builds a tensor string recursively
+static void build_string(
+    StringBuilder* sb, 
+    const Tensor* tensor, 
+    size_t indent, 
+    size_t offset,
+    size_t dim
+) {
+  char indents[indent + 1];
+  memset(indents, ' ', indent);
+  indents[indent] = '\0';
+
+  sb_append(sb, indents);
+  sb_append(sb, "[");
+
+  if(dim == tensor->ndim - 1) {
+    for(size_t i = 0; i < tensor->shape[dim]; i++) {
+      char buff[32];
+      
+      format_element(
+          tensor, 
+          offset + i * tensor->strides[dim], 
+          buff, 
+          sizeof(buff)
+          );
+
+      if(i > 0)
+        sb_append(sb, " ");
+
+      sb_append(sb, buff);
+    }
+  } else {
+    sb_append(sb, "\n");
+
+    for(size_t i = 0; i < tensor->shape[dim]; i++) {
+      build_string(
+          sb, 
+          tensor, 
+          indent + 1, 
+          offset + i * tensor->strides[dim],
+          dim + 1
+      );
+    }
+
+    sb_append(sb, indents);
+  }
+
+  sb_append(sb, "]");
+  
+  if(dim != 0)
+    sb_append(sb, "\n");
+}
+
+char* tensor_to_string(const Tensor* tensor) {
+  StringBuilder sb;
+  sb_init(&sb);
+
+  build_string(&sb, tensor, 0, 0, 0);
+  return sb.buf;
+}
+
+

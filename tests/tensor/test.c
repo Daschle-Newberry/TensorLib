@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <math.h>
+#include <string.h>
 
 #include "harness.h"
 #include "tensor.h"
@@ -76,11 +77,33 @@ TEST(tensor_destroy) {
   free(storage);
 }
 
-int main() {
-  
+TEST(tensor_to_string) {
+  TensorError err;
+  Tensor*     tensor;
+  char*       str;
+  // *********************** 1 F32 *********************** 
+  tensor = tensor_create_empty(T_FLOAT32, 1, (size_t[]){1}, &err);
+  str = tensor_to_string(tensor); 
+  free(str);
+  tensor_destroy(tensor);
+
+  // *********************** 2x2 F32 *********************** 
+  tensor = tensor_create_empty(T_FLOAT32, 2, (size_t[]){2,2}, &err);
+  str = tensor_to_string(tensor); 
+  free(str);
+  tensor_destroy(tensor);
+
+  // *********************** 3x3x3 F32 *********************** 
+  tensor = tensor_create_empty(T_FLOAT32, 3, (size_t[]){3,3,3}, &err);
+  str = tensor_to_string(tensor); 
+  free(str);
+  tensor_destroy(tensor);
+}
+
+int main() { 
   RUN(tensor_create_empty);
   RUN(tensor_destroy);
-
+  RUN(tensor_to_string);
   return 0;
 }
 
