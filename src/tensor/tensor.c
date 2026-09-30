@@ -137,6 +137,27 @@ cleanup:
   return NULL;
 }
 
+Tensor* tensor_create_from_data(
+    TensorDType type,
+    size_t ndim,
+    const size_t shape[ndim],
+    const void* data,
+    TensorError* err
+) {
+  if(!data) {
+    if(*err) *err = TENSOR_ERROR_INVALID_ARGUMENT;
+    return NULL;
+  }
+
+  Tensor* tensor = tensor_create_empty(type, ndim, shape, err);
+
+  if(!tensor)
+    return NULL;
+ 
+  memcpy(tensor->storage->data, data, tensor->storage->n);
+  return tensor;
+}
+
 void tensor_destroy(Tensor* tensor) {
   if(!tensor)
     return;

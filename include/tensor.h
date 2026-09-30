@@ -38,6 +38,25 @@ Tensor* tensor_create_empty(
     );
 
 /**
+ * @brief Creates a tensor and fills it with the given data
+ *
+ * @param type The type of the tensor
+ * @param ndim Number of dimensions
+ * @param shape Array of length ndim specifying the size of each dimension.
+ * @param data Array of length product(shape) specifying the data to use
+ * @param err Pointer to a TensorError for error codes
+ *
+ * @return Pointer to a heap allocated tensor on success, NULL otherwise
+ */
+Tensor* tensor_create_from_data(
+    TensorDType type,
+    size_t ndim,
+    const size_t shape[ndim],
+    const void* data,
+    TensorError* err
+    );
+
+/**
  * @brief Free ALL heap memory associated with the tensor (data, shape, strides).
  *
  * @param tensor Tensor to be freed

@@ -58,6 +58,53 @@ TEST(tensor_create_empty) {
   ASSERT(err == TENSOR_ERROR_ARGUMENT_OVERFLOW); 
 }
 
+TEST(tensor_create_from_data) {
+  TensorError err;
+  Tensor* tensor;
+  
+  // ******************** CREATE 3 DIM F32 ******************** 
+  float data3d[27];
+  for(int i = 0; i < 27; i++) data3d[i] = i;
+  
+  tensor = tensor_create_from_data(T_FLOAT32, 3,(size_t[]){3, 3, 3}, &data3d, &err);
+  ASSERT(err == TENSOR_ERROR_NONE);
+  ASSERT(tensor != NULL);
+  ASSERT_ARRAY_EQ(data3d, tensor->storage->data, 9, float);
+ 
+  tensor_destroy(tensor);
+ 
+  // ******************** CREATE 2 DIM F32 ******************** 
+  float data2d[4];
+  for(int i = 0; i < 4; i++) data3d[i] = i;
+  
+  tensor = tensor_create_from_data(T_FLOAT32, 2,(size_t[]){2, 2}, &data2d, &err);
+  ASSERT(err == TENSOR_ERROR_NONE);
+  ASSERT(tensor != NULL);
+  ASSERT_ARRAY_EQ(data2d, tensor->storage->data, 4, float);
+ 
+  tensor_destroy(tensor);
+ 
+  // ******************** CREATE 1 DIM F32 ******************** 
+  float data1d[2] = {1, 2};
+  
+  tensor = tensor_create_from_data(T_FLOAT32, 1,(size_t[]){2}, &data1d, &err);
+  ASSERT(err == TENSOR_ERROR_NONE);
+  ASSERT(tensor != NULL);
+  ASSERT_ARRAY_EQ(data1d, tensor->storage->data, 2, float);
+  
+  tensor_destroy(tensor);
+  
+  // ******************** CREATE 1 DIM F32 ******************** 
+  float data0d[1] = {1};
+  
+  tensor = tensor_create_from_data(T_FLOAT32, 0, NULL, &data0d, &err);
+  ASSERT(err == TENSOR_ERROR_NONE);
+  ASSERT(tensor != NULL);
+  ASSERT_ARRAY_EQ(data0d, tensor->storage->data, 1, float);
+
+  tensor_destroy(tensor);
+}
+
 
 TEST(tensor_destroy) {
   TensorError err;
@@ -102,6 +149,7 @@ TEST(tensor_to_string) {
 
 int main() { 
   RUN(tensor_create_empty);
+  RUN(tensor_create_from_data);
   RUN(tensor_destroy);
   RUN(tensor_to_string);
   return 0;
