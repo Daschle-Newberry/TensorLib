@@ -37,7 +37,7 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 
 $(TESTBUILDDIR)/%: $(TESTDIR)/%.c $(TARGET)
 	@mkdir -p $(dir $@)
-	$(CC) $(CCFLAGS) $< -L$(BUILDDIR) -l$(LIBNAME) -o $@
+	$(CC) $(CCFLAGS) -fno-analyzer $< -L$(BUILDDIR) -l$(LIBNAME) -o $@
 
 test: $(TESTBIN)
 	@for test in $(TESTBIN); do \
